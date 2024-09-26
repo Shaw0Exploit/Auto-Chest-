@@ -156,6 +156,7 @@ task.spawn(function()
                         local Chest = game.Workspace:FindFirstChild("Chest4") or game.Workspace:FindFirstChild("Chest3") or game.Workspace:FindFirstChild("Chest2") or game.Workspace:FindFirstChild("Chest1") or game.Workspace:FindFirstChild("Chest")
                         
                         if Chest then
+                            task.wait(1) -- Added a 1-second delay before teleporting to the chest
                             game.Players.LocalPlayer.Character:PivotTo(Chest:GetPivot())
                             firesignal(Chest.Touched,game.Players.LocalPlayer.Character.HumanoidRootPart)
                         else
@@ -176,6 +177,7 @@ task.spawn(function()
                         local Chest = game.Workspace:FindFirstChild("Chest4") or game.Workspace:FindFirstChild("Chest3") or game.Workspace:FindFirstChild("Chest2")
                         
                         if Chest then
+                            task.wait(1) -- Added a 1-second delay before teleporting to the chest
                             game.Players.LocalPlayer.Character:PivotTo(Chest:GetPivot())
                             firesignal(Chest.Touched,game.Players.LocalPlayer.Character.HumanoidRootPart)
                         else
