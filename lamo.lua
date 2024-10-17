@@ -1,71 +1,190 @@
--- Enhanced Auto Chest Collector for Blox Fruits
--- Ensure game is fully loaded
-repeat task.wait() until game:IsLoaded()
-
-local chestsCollected = 0 -- Counter to track the number of chests collected
-
--- Function to smoothly teleport to a chest using TweenService for better anti-cheat bypass
-local function teleportToChest(chest)
-    local player = game.Players.LocalPlayer
-    local humanoidRootPart = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-
-    if humanoidRootPart and chest and chest:IsA("BasePart") then
-        local TweenService = game:GetService("TweenService")
-        local tweenInfo = TweenInfo.new(1, Enum.EasingStyle.Linear) -- Tween over 1 second
-
-        -- Create a goal position slightly above the chest for smoother landing
-        local chestPosition = chest.Position + Vector3.new(0, 3, 0)
-        local tween = TweenService:Create(humanoidRootPart, tweenInfo, {CFrame = CFrame.new(chestPosition)})
-
-        tween:Play()
-        tween.Completed:Wait() -- Wait for the movement to complete
-        firesignal(chest.Touched, humanoidRootPart) -- Trigger the chest's touch event
-    end
+highChestOnly = true
+godsChalicSniper = false
+repeat task.wait(4) until game:IsLoaded()
+local PlaceID = game.PlaceId
+local AllIDs = {}
+local foundAnything = ""
+local actualHour = os.date("!*t").hour
+local Deleted = false
+local File = pcall(function()
+    AllIDs = game:GetService('HttpService'):JSONDecode(readfile("NotSameServers.json"))
+end)
+if not File then
+    table.insert(AllIDs, actualHour)
+    writefile("NotSameServers.json", game:GetService('HttpService'):JSONEncode(AllIDs))
 end
-
--- Function to find the next chest
-local function findAndCollectChest()
-    local chests = {"Chest4", "Chest3", "Chest2", "Chest1", "Chest"} -- Priority order of chests
-    for _, chestName in ipairs(chests) do
-        local chest = game.Workspace:FindFirstChild(chestName)
-        if chest then
-            teleportToChest(chest)
-            chestsCollected = chestsCollected + 1 -- Increment the chest counter
-            task.wait(math.random(1, 2)) -- Random delay between each chest collection
-            return true -- Chest found and collected
+function TPReturner()
+    local Site;
+    if foundAnything == "" then
+        Site = game.HttpService:JSONDecode(game:HttpGet('https://games.roblox.com/v1/games/' .. PlaceID .. '/servers/Public?sortOrder=Asc&limit=100'))
+    else
+        Site = game.HttpService:JSONDecode(game:HttpGet('https://games.roblox.com/v1/games/' .. PlaceID .. '/servers/Public?sortOrder=Asc&limit=100&cursor=' .. foundAnything))
+    end
+    local ID = ""
+    if Site.nextPageCursor and Site.nextPageCursor ~= "null" and Site.nextPageCursor ~= nil then
+        foundAnything = Site.nextPageCursor
+    end
+    local num = 0;
+    for i,v in pairs(Site.data) do
+        local Possible = true
+        ID = tostring(v.id)
+        if tonumber(v.maxPlayers) > tonumber(v.playing) then
+            for _,Existing in pairs(AllIDs) do
+                if num ~= 0 then
+                    if ID == tostring(Existing) then
+                        Possible = false
+                    end
+                else
+                    if tonumber(actualHour) ~= tonumber(Existing) then
+                        local delFile = pcall(function()
+                            delfile("NotSameServers.json")
+                            AllIDs = {}
+                            table.insert(AllIDs, actualHour)
+                        end)
+                    end
+                end
+                num = num + 1
+            end
+            if Possible == true then
+                table.insert(AllIDs, ID)
+                wait()
+                pcall(function()
+                    writefile("NotSameServers.json", game:GetService('HttpService'):JSONEncode(AllIDs))
+                    wait()
+                    game:GetService("TeleportService"):TeleportToPlaceInstance(PlaceID, ID, game.Players.LocalPlayer)
+                end)
+                wait(4)
+            end
         end
     end
-    return false -- No chest found
 end
 
--- Function to reset the player's character after collecting 5 chests
-local function resetCharacter()
-    if chestsCollected >= 5 then
-        chestsCollected = 0 -- Reset the chest counter
-        game.Players.LocalPlayer.Character:BreakJoints() -- Reset the character
-        task.wait(5) -- Wait a few seconds before continuing to avoid detection
+function Teleport()
+    while wait() do
+        pcall(function()
+            TPReturner()
+            if foundAnything ~= "" then
+                TPReturner()
+            end
+        end)
     end
 end
+local veryImportantWaitTime = 0.5
+task.spawn(function()
+    while task.wait(veryImportantWaitTime) do
+        pcall(function()
+            for i,v in pairs(game.CoreGui:GetDescendants()) do
+                pcall(function()
+                    if string.find(v.Name,"ErrorMessage") then
+                        if string.find(v.Text,"Security kick") then
+                            veryImportantWaitTime = 1e9
+                            Teleport()
+                        end
+                    end
+                end)
+            end
+        end)
+    end
+end)
 
--- Function to server hop if no chests are available
-local function serverHop()
-    local TeleportService = game:GetService("TeleportService")
-    local PlaceID = game.PlaceId
-    local Servers = game.HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. PlaceID .. "/servers/Public?sortOrder=Asc&limit=100"))
+local AllowRunService = true
+local AllowRunServiceBind = Instance.new("BindableFunction")
+function AllowRunServiceBind.OnInvoke(args)
+    if args == "ON" then
+        AllowRunService = true
+    elseif args == "OFF" then
+        AllowRunService = false
+    end
+    local CoreGui = game:GetService("StarterGui")
+    CoreGui:SetCore("SendNotification", {
+        Title = "Chest Farm",
+        Text = "by thaibao7444 ",
+        Icon = "rbxthumb://type=Asset&id=15485121479&w=150&h=150",
+        Duration = math.huge,
+        Callback = AllowRunServiceBind,
+        Button1 = "ON",
+        Button2 = "OFF",
+    })
+end
 
-    for _, server in ipairs(Servers.data) do
-        if server.playing < server.maxPlayers then
-            TeleportService:TeleportToPlaceInstance(PlaceID, server.id, game.Players.LocalPlayer)
-            break
+
+task.spawn(function()
+    while task.wait() do
+        task.spawn(function()
+            if godsChalicSniper == true then
+                if stuff then
+                    AllowRunService = false
+                end
+            end
+        end)
+    end
+end)
+
+local CoreGui = game:GetService("StarterGui")
+CoreGui:SetCore("SendNotification", {
+    Title = "Chest Farm",
+    Text = "by thaibao7444",
+    Icon = "rbxthumb://type=Asset&id=15485121479&w=150&h=150",
+    Duration = math.huge,
+    Callback = AllowRunServiceBind,
+    Button1 = "ON",
+    Button2 = "OFF",
+})
+task.spawn(function()
+    while true and task.wait(.5) do
+        if AllowRunService == true then
+            local ohString1 = "SetTeam"
+            local ohString2 = "Marines"
+
+            game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer(ohString1, ohString2)
         end
     end
-end
+end)
 
--- Main loop to collect chests
-while task.wait(2) do -- Check every 2 seconds
-    local chestFound = findAndCollectChest()
-    resetCharacter() -- Check if the character needs to reset after collecting 5 chests
-    if not chestFound then
-        serverHop() -- Hop to another server if no chests are found
+task.spawn(function()
+    while true and task.wait() do
+        if AllowRunService == true then
+            if highChestOnly == false then
+                local hasChar = game.Players.LocalPlayer:FindFirstChild("Character")
+                if not game.Players.LocalPlayer.Character then
+        
+                else
+                    local hasCrewTag = game.Players.LocalPlayer.Character:FindFirstChild("CrewBBG",true)
+                    if hasCrewTag then hasCrewTag:Destroy() end
+                    local hasHumanoid = game.Players.LocalPlayer.Character:FindFirstChild("Humanoid")
+                    if hasHumanoid then
+                        local Chest = game.Workspace:FindFirstChild("Chest4") or game.Workspace:FindFirstChild("Chest3") or game.Workspace:FindFirstChild("Chest2") or game.Workspace:FindFirstChild("Chest1") or game.Workspace:FindFirstChild("Chest")
+                        
+                        if Chest then
+                            game.Players.LocalPlayer.Character:PivotTo(Chest:GetPivot())
+                            firesignal(Chest.Touched,game.Players.LocalPlayer.Character.HumanoidRootPart)
+                        else
+                            Teleport()
+                            break
+                        end
+                    end 
+                end
+            elseif highChestOnly == true then
+                local hasChar = game.Players.LocalPlayer:FindFirstChild("Character")
+                if not game.Players.LocalPlayer.Character then
+        
+                else
+                    local hasCrewTag = game.Players.LocalPlayer.Character:FindFirstChild("CrewBBG",true)
+                    if hasCrewTag then hasCrewTag:Destroy() end
+                    local hasHumanoid = game.Players.LocalPlayer.Character:FindFirstChild("Humanoid")
+                    if hasHumanoid then
+                        local Chest = game.Workspace:FindFirstChild("Chest4") or game.Workspace:FindFirstChild("Chest3") or game.Workspace:FindFirstChild("Chest2")
+                        
+                        if Chest then
+                            game.Players.LocalPlayer.Character:PivotTo(Chest:GetPivot())
+                            firesignal(Chest.Touched,game.Players.LocalPlayer.Character.HumanoidRootPart)
+                        else
+                            Teleport()
+                            break
+                        end
+                    end 
+                end
+            end
+        end
     end
-end
+end)
